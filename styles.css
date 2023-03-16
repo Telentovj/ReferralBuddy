@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300&display=swap" rel="stylesheet'); 
+
+html, body, [class*="css"] {
+    font-family: 'Lato', sans-serif; 
+}
+
+#MainMenu {visibility: hidden;}
+
+[id *= "ldavis"]{
+    display: none;
+}
