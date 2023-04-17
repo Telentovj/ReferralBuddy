@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 import pmdarima as pm
+import streamlit as st
 
 
 def read_and_process_file(csv):
@@ -11,7 +12,7 @@ def read_and_process_file(csv):
     data = data.drop(columns="Date")
     dataT = data.T
     dataT["Date"] = dataT.index
-    dataT["Date"] = pd.to_datetime(dataT["Date"][:-1])
+    dataT["Date"] = pd.to_datetime(dataT["Date"])
     dataT.index = pd.to_datetime(dataT["Date"])
     return dataT
 
@@ -25,57 +26,48 @@ def plot_eda(df):
     plt.show()
 
 
-def initialise_auto_arima(df):
-    model = pm.auto_arima(
-        df.Total,
-        start_p=1,
-        start_q=1,
-        test="adf",  # use adftest to find optimal 'd'
-        max_p=3,
-        max_q=3,  # maximum p and q
-        m=1,  # frequency of series
-        d=None,  # let model determine 'd'
-        seasonal=False,  # No Seasonality
-        start_P=0,
-        D=0,
-        trace=True,
-        error_action="ignore",
-        suppress_warnings=True,
-        stepwise=True,
-    )
-    return model
+def initialise_arima_prediction(df):
+    totallen = df.shape[0]
+    predtime = totallen - 1
+    daystopred = 15
 
+    train = df.Total[:predtime]
 
-def initialise_arima(df):
-    model = pm.auto_arima(
-        df.Total,
-        start_p=1,
-        start_q=1,
-        test="adf",  # use adftest to find optimal 'd'
-        max_p=3,
-        max_q=3,  # maximum p and q
-        m=1,  # frequency of series
-        d=None,  # let model determine 'd'
-        seasonal=False,  # No Seasonality
-        start_P=0,
-        D=0,
-        trace=True,
-        error_action="ignore",
-        suppress_warnings=True,
-        stepwise=True,
-    )
-    train = df.Total[:30]
-    test = df.Total[30:]
-
-    model = ARIMA(train, order=(2, 1, 0))
+    model = ARIMA(train, order=(2, 0, 2))
     model_fit = model.fit()
-    arr = model_fit.predict(start=30, end=50, alpha=0.1, dynamic=True)  # 95% conf
-    arr = round(arr)
+    arr = model_fit.predict(
+        start=predtime, end=predtime + daystopred, alpha=0.1, dynamic=True
+    )  # 95% conf
 
+    arr = round(arr)
+    arr.index = pd.date_range(df.index[predtime], periods=daystopred + 1, freq="D")
     arr.index = pd.to_datetime(arr.index)
-    plt.figure(figsize=(40, 5), dpi=100)
-    plt.plot(df.Total, label="training")
+
+    plt.figure(figsize=(20, 5), dpi=100)
+    plt.plot(df.Total[predtime - 15 :], label="training")
     plt.plot(arr, label="forecast")
+
     plt.title("Forecast vs Actuals")
     plt.legend(loc="upper left", fontsize=8)
+    plt.show()
+    st.session_state.estimated_time = arr
+
+
+def estimated_time_prediction(df):
+    ##Estimating time
+    newestimates = pd.DataFrame(df)
+    newestimates = newestimates.rename(
+        columns={"predicted_mean": "Estimate number of patient"}
+    )
+    # From excel data we find that Cogitive test (MMSE) consists of 33.92% of referral and Montreal Cognitive Assessment consists of 32.74% of referrals rest is variance
+    newestimates["EstimatedTime"] = (
+        newestimates["Estimate number of patient"]
+        * (0.3392 * 15 + 0.3274 * 20 + 5 / 3)
+        / 60
+    )
+    newestimates = newestimates.drop(columns=["Estimate number of patient"])
+
+    fig, ax = plt.subplots(figsize=(15, 6))
+    newestimates.plot(kind="bar", ax=ax)
+    plt.title("Estimated Time")
     plt.show()

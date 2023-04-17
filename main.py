@@ -26,7 +26,7 @@ if st.session_state.currentPage == "main_page":
         col2.image("logo.png", use_column_width=True)
         uploaded_file = st.file_uploader("", type=["csv", "xlsx"], key="enabled")
         if uploaded_file:
-            st.session_state.df = read_and_process_file("IS4250JanFeb2023.csv")
+            st.session_state.df = read_and_process_file(uploaded_file)
             insight1, insight2, insight3 = st.columns([1, 0.5, 1])
             insight = insight2.button(
                 "Click here to focus on the insights that has be found!",
@@ -35,13 +35,21 @@ if st.session_state.currentPage == "main_page":
             )
 
 
-
 # Insight Page
 if st.session_state.currentPage == "insight_page":
     insight_page = st.container()
     with insight_page:
-        df = st.session_state['df']
+        df = st.session_state["df"]
         eda_expander = st.expander("Data Exploration")
         eda_expander.pyplot(plot_eda(df))
         arima_expander = st.expander("Arima Model Prediction")
-        arima_expander.pyplot(initialise_arima(df))
+        arima_expander.pyplot(initialise_arima_prediction(df))
+        estimated_time_expander = st.expander("Estimated Time")
+        estimated_time_expander.pyplot(
+            estimated_time_prediction(st.session_state.estimated_time)
+        )
+        st.button(
+            "Click here to input a new dataset!",
+            on_click=change_page,
+            args=("main_page",),
+        )
